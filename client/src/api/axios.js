@@ -1,15 +1,26 @@
 import axios from 'axios'
 
+const BASE_URL = import.meta.env.VITE_API_URL
+
+if (!BASE_URL) {
+  console.error("❌ VITE_API_URL is missing in environment variables")
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: BASE_URL,
+  withCredentials: true,
 })
 
+// 🔐 Attach token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('hf_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 
+// 🚨 Handle auth errors globally
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -18,6 +29,7 @@ api.interceptors.response.use(
       localStorage.removeItem('hf_user')
       window.location.href = '/auth'
     }
+
     return Promise.reject(err)
   }
 )
