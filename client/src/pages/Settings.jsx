@@ -4,7 +4,7 @@ import api from '../api/axios'
 import toast from 'react-hot-toast'
 import Navbar from '../components/layout/Navbar'
 import { useNavigate } from 'react-router-dom'
-import { User, Lock, Bell, LogOut, ChevronRight } from 'lucide-react'
+import { User, Lock, Bell, LogOut, ChevronRight, BellOff, BellRing } from 'lucide-react'
 
 const Settings = () => {
   const { user, updateUser, logout } = useAuth()
@@ -13,8 +13,14 @@ const Settings = () => {
   const [profile, setProfile] = useState({ firstName: user?.firstName || '', lastName: user?.lastName || '' })
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [loading, setLoading] = useState(false)
+  const [logoutConfirm, setLogoutConfirm] = useState(false)
+  const [notifSettings, setNotifSettings] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || { daily: true, streaks: true, badges: true, tips: false } }
+    catch { return { daily: true, streaks: true, badges: true, tips: false } }
+  })
 
   const saveProfile = async () => {
+    if (!profile.firstName.trim()) return toast.error('First name is required')
     setLoading(true)
     try {
       const res = await api.put('/auth/profile', profile)
@@ -26,10 +32,9 @@ const Settings = () => {
   }
 
   const changePassword = async () => {
-    if (passwords.newPassword !== passwords.confirmPassword)
-      return toast.error('Passwords do not match')
-    if (passwords.newPassword.length < 6)
-      return toast.error('Password must be at least 6 characters')
+    if (!passwords.currentPassword) return toast.error('Enter your current password')
+    if (passwords.newPassword.length < 6) return toast.error('Password must be at least 6 characters')
+    if (passwords.newPassword !== passwords.confirmPassword) return toast.error('Passwords do not match')
     setLoading(true)
     try {
       await api.put('/auth/password', {
@@ -42,6 +47,13 @@ const Settings = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to change password')
     } finally { setLoading(false) }
+  }
+
+  const toggleNotif = (key) => {
+    const updated = { ...notifSettings, [key]: !notifSettings[key] }
+    setNotifSettings(updated)
+    localStorage.setItem('hf_notif_settings', JSON.stringify(updated))
+    toast.success(`${updated[key] ? 'Enabled' : 'Disabled'} ${key} notifications`)
   }
 
   const handleLogout = () => { logout(); navigate('/') }
@@ -59,11 +71,25 @@ const Settings = () => {
     </button>
   )
 
-  return (
-    <div className="min-h-screen bg-green-50 pb-24 md:pb-8 md:ml-64">
-      <Navbar title="Settings" />
+  const Toggle = ({ label, desc, value, onToggle }) => (
+    <div className="flex items-center justify-between py-3 px-1">
+      <div className="flex-1 min-w-0 pr-4">
+        <p className="text-sm font-display font-700 text-gray-800">{label}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+      </div>
+      <button onClick={onToggle}
+        className={`relative w-12 h-6 rounded-full transition-all flex-shrink-0 ${value ? 'bg-green-500' : 'bg-gray-200'}`}>
+        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all ${value ? 'left-6' : 'left-0.5'}`}/>
+      </button>
+    </div>
+  )
 
-      <div className="p-4 md:p-8 max-w-2xl mx-auto">
+  return (
+    <div className="min-h-screen bg-green-50 pb-28 md:pb-8 md:ml-64 overflow-x-hidden">
+      <Navbar title="Settings"/>
+      <div className="h-14 md:hidden"/>
+
+      <div className="px-4 py-4 md:px-8 md:py-8 max-w-2xl mx-auto w-full">
         <h1 className="font-display font-900 text-2xl text-gray-900 mb-5 hidden md:block">Settings</h1>
 
         {/* Avatar card */}
@@ -77,7 +103,7 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* Menu */}
+        {/* Account Menu */}
         <div className="bg-white rounded-3xl shadow-card overflow-hidden mb-4">
           <div className="divide-y divide-gray-50 px-2 py-2">
             <MenuItem icon={User} label="Edit Profile" onClick={() => setSection(section === 'profile' ? null : 'profile')} />
@@ -112,17 +138,46 @@ const Settings = () => {
               </div>
             )}
 
-            <MenuItem icon={Bell} label="Notifications" onClick={() => toast('Coming soon!')} />
+            <MenuItem icon={Bell} label="Notifications" onClick={() => setSection(section === 'notifs' ? null : 'notifs')} />
+            {section === 'notifs' && (
+              <div className="px-4 pb-4 space-y-1">
+                <Toggle label="Daily Reminders" desc="Remind me to check in each day" value={notifSettings.daily} onToggle={() => toggleNotif('daily')} />
+                <Toggle label="Streak Alerts" desc="Alert when streak is at risk" value={notifSettings.streaks} onToggle={() => toggleNotif('streaks')} />
+                <Toggle label="Badge Unlocks" desc="Notify when I earn a badge" value={notifSettings.badges} onToggle={() => toggleNotif('badges')} />
+                <Toggle label="Daily Tips" desc="Receive habit-building tips" value={notifSettings.tips} onToggle={() => toggleNotif('tips')} />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Logout */}
         <div className="bg-white rounded-3xl shadow-card overflow-hidden px-2 py-2">
-          <MenuItem icon={LogOut} label="Log Out" danger onClick={handleLogout} />
+          <MenuItem icon={LogOut} label="Log Out" danger onClick={() => setLogoutConfirm(true)} />
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6 font-display">HabitFlow v1.0.0 · Built with ❤️</p>
+        <p className="text-center text-xs text-gray-300 mt-6 font-display">HabitFlow v1.0.0 · Built by Dev_Al-ameen</p>
       </div>
+
+      {/* Logout Confirm */}
+      {logoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="text-3xl text-center mb-3">👋</div>
+            <h3 className="font-display font-900 text-gray-900 text-center text-lg mb-1">Log Out?</h3>
+            <p className="text-sm text-gray-400 text-center mb-5">Are you sure you want to log out of HabitFlow?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setLogoutConfirm(false)}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-display font-800 text-sm hover:bg-gray-200 transition-all">
+                Cancel
+              </button>
+              <button onClick={handleLogout}
+                className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-display font-800 text-sm hover:bg-red-600 transition-all">
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

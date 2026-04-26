@@ -64,4 +64,3 @@ Add `vercel.json` to client for SPA routing:
 ```json
 { "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
 ```
-# Habit-flow-org..

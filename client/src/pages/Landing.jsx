@@ -6,7 +6,7 @@ const FEATURES = [
   { icon: Flame,       color: '#FF6F00', title: 'Streak Tracking',      desc: 'Never break the chain. Watch your streaks grow day by day.' },
   { icon: TrendingUp,  color: '#42A5F5', title: 'Progress Analytics',   desc: 'Beautiful charts show your growth over time.' },
   { icon: Award,       color: '#AB47BC', title: 'Badges & Rewards',     desc: 'Earn badges as you hit milestones and stay motivated.' },
-  { icon: Sparkles,    color: '#FF7043', title: 'AI Habit Coaching',    desc: 'Claude AI suggests habits tailored to your personal goals.' },
+  { icon: Sparkles,    color: '#FF7043', title: 'AI Habit Coaching', desc: 'Smart AI suggests habits tailored to your personal goals.' },
 ]
 
 const Landing = () => {
@@ -107,7 +107,7 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="text-center py-8 text-xs text-gray-300 font-display">
-        © 2024 HabitFlow · Built with ❤️ and Claude AI
+        © 2025 HabitFlow · Built by Dev_Al-ameen
       </footer>
     </div>
   )
