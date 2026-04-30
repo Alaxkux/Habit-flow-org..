@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const DAYS   = ['S','M','T','W','T','F','S']
@@ -12,18 +12,16 @@ const getColor = (count) => {
 }
 
 const HeatmapCalendar = ({ data = {} }) => {
+  const scrollRef = useRef(null)
+
   const { cells, monthLabels } = useMemo(() => {
     const today = new Date()
     const start = new Date(today)
     start.setDate(start.getDate() - 364)
-    start.setDate(start.getDate() - start.getDay()) // rewind to Sunday
-
-    const cells = []
-    const monthLabels = []
-    let lastMonth = -1
-    let colIndex = 0
+    start.setDate(start.getDate() - start.getDay())
+    const cells = [], monthLabels = []
+    let lastMonth = -1, colIndex = 0
     const cursor = new Date(start)
-
     while (cursor <= today) {
       const month = cursor.getMonth()
       if (month !== lastMonth) { monthLabels.push({ col: colIndex, label: MONTHS[month] }); lastMonth = month }
@@ -36,11 +34,17 @@ const HeatmapCalendar = ({ data = {} }) => {
         week.push({ key, count: cursor > today ? null : (data[key] || 0), isFuture: cursor > today })
         cursor.setDate(cursor.getDate() + 1)
       }
-      cells.push(week)
-      colIndex++
+      cells.push(week); colIndex++
     }
     return { cells, monthLabels }
   }, [data])
+
+  // Auto-scroll to the rightmost (most recent) end
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+    }
+  }, [cells])
 
   const totalContributions = Object.values(data).reduce((a, b) => a + b, 0)
 
@@ -51,9 +55,9 @@ const HeatmapCalendar = ({ data = {} }) => {
         <span className="text-xs text-gray-400 font-600">{totalContributions} total check-ins</span>
       </div>
 
-      <div className="overflow-x-auto">
-        <div style={{ width: 'max-content' }}>
-          {/* Month labels row */}
+      <div ref={scrollRef} className="overflow-x-auto">
+        <div style={{ width: 'max-content', minWidth: '100%' }}>
+          {/* Month labels */}
           <div className="flex gap-0.5 mb-1 ml-5">
             {(() => {
               const els = []
@@ -78,22 +82,18 @@ const HeatmapCalendar = ({ data = {} }) => {
                 </div>
               ))}
             </div>
-
-            {/* Grid columns */}
             {cells.map((week, wi) => (
               <div key={wi} className="flex flex-col gap-0.5">
-                {week.map((cell) => (
+                {week.map(cell => (
                   <div key={cell.key}
                     title={cell.isFuture ? '' : `${cell.key}: ${cell.count} check-in${cell.count !== 1 ? 's' : ''}`}
                     className="w-3 h-3 rounded-[2px] cursor-default"
-                    style={{ backgroundColor: cell.isFuture ? 'transparent' : getColor(cell.count) }}
-                  />
+                    style={{ backgroundColor: cell.isFuture ? 'transparent' : getColor(cell.count) }}/>
                 ))}
               </div>
             ))}
           </div>
 
-          {/* Legend */}
           <div className="flex items-center gap-1.5 mt-2 justify-end">
             <span className="text-[9px] text-gray-300">Less</span>
             {[0,1,2,3,4].map(n => (

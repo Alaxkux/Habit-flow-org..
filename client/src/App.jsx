@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
+import { PowerUpProvider } from './context/PowerUpContext'
 import ProtectedRoute from './components/ui/ProtectedRoute'
 import Sidebar from './components/layout/Sidebar'
 
@@ -22,26 +24,30 @@ const AppLayout = ({ children }) => (
 )
 
 const App = () => (
-  <AuthProvider>
-    <BrowserRouter>
-      <Toaster position="top-center" toastOptions={{
-        style: { borderRadius: '16px', fontFamily: 'Plus Jakarta Sans', fontSize: '14px', fontWeight: 600 },
-        success: { iconTheme: { primary: '#4CAF50', secondary: '#fff' } }
-      }} />
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-        <Route path="/habits"    element={<ProtectedRoute><AppLayout><Habits /></AppLayout></ProtectedRoute>} />
-        <Route path="/progress"  element={<ProtectedRoute><AppLayout><Progress /></AppLayout></ProtectedRoute>} />
-        <Route path="/badges"    element={<ProtectedRoute><AppLayout><Badges /></AppLayout></ProtectedRoute>} />
-        <Route path="/ai"        element={<ProtectedRoute><AppLayout><AISuggestions /></AppLayout></ProtectedRoute>} />
-        <Route path="/settings"  element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
-        <Route path="/xp-store"  element={<ProtectedRoute><AppLayout><XPStore /></AppLayout></ProtectedRoute>} />
-        <Route path="*"          element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  </AuthProvider>
+  <ThemeProvider>
+    <PowerUpProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Toaster position="top-center" toastOptions={{
+            style: { borderRadius: '16px', fontFamily: 'Plus Jakarta Sans', fontSize: '14px', fontWeight: 600 },
+            success: { iconTheme: { primary: '#4CAF50', secondary: '#fff' } }
+          }} />
+          <Routes>
+            <Route path="/"         element={<Landing />} />
+            <Route path="/auth"     element={<Auth />} />
+            <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+            <Route path="/habits"   element={<ProtectedRoute><AppLayout><Habits /></AppLayout></ProtectedRoute>} />
+            <Route path="/progress" element={<ProtectedRoute><AppLayout><Progress /></AppLayout></ProtectedRoute>} />
+            <Route path="/badges"   element={<ProtectedRoute><AppLayout><Badges /></AppLayout></ProtectedRoute>} />
+            <Route path="/ai"       element={<ProtectedRoute><AppLayout><AISuggestions /></AppLayout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+            <Route path="/xp-store" element={<ProtectedRoute><AppLayout><XPStore /></AppLayout></ProtectedRoute>} />
+            <Route path="*"         element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </PowerUpProvider>
+  </ThemeProvider>
 )
 
 export default App

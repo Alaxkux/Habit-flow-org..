@@ -12,3 +12,7 @@ router.get('/xp',              auth, getXP);
 router.post('/spend-xp',       auth, spendXP);
 
 module.exports = router;
+
+// Add best streak route
+const { getBestStreak } = require('../controllers/log.controller');
+router.get('/best-streak', auth, getBestStreak);

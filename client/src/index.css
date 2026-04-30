@@ -4,14 +4,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Default theme tokens (forest) ────────────────────────────────────────── */
+:root {
+  --color-bg:           #F0FDF4;
+  --color-bg-deep:      #DCFCE7;
+  --color-accent:       #16A34A;
+  --color-accent-hover: #15803D;
+  --color-accent-light: #DCFCE7;
+  --color-accent-text:  #14532D;
+  --color-sidebar:      #ffffff;
+  --color-nav-text:     #166534;
+  --color-card:         #ffffff;
+  --color-page-text:    #111827;
+  --color-sub-text:     #6B7280;
+  --color-border:       #E5E7EB;
+  --color-nav-bg:       #ffffff;
+}
+
 @layer base {
-  *, *::before, *::after {
-    box-sizing: border-box;
-    min-width: 0; /* prevents flex children from blowing out */
-  }
+  *, *::before, *::after { box-sizing: border-box; min-width: 0; }
+
   html {
     overflow-x: hidden;
     width: 100%;
+    /* Android fix */
+    overscroll-behavior-x: none;
   }
   body {
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -19,51 +36,64 @@
     width: 100%;
     max-width: 100vw;
     overscroll-behavior-y: contain;
+    overscroll-behavior-x: none;
+    /* Apply theme bg to body */
+    background-color: var(--color-bg);
+    color: var(--color-page-text);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
-  #root {
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100vw;
-  }
-  /* Every image/video/svg respects its container */
+  #root { overflow-x: hidden; width: 100%; max-width: 100vw; }
   img, video, svg { max-width: 100%; }
-  /* Inputs never overflow */
   input, textarea, select { max-width: 100%; }
+  /* Android touch fix */
+  * { touch-action: pan-y; }
+  .overflow-x-auto, [data-allow-scroll] { touch-action: pan-x pan-y; }
 }
 
 @layer utilities {
-  .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
-  .font-body    { font-family: 'Plus Jakarta Sans', sans-serif; }
-  .shadow-card  { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-  .shadow-pop   { box-shadow: 0 8px 40px rgba(0,0,0,0.16); }
-  .safe-area-pb { padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px); }
-  /* Clamp any content inside a card to never exceed its parent */
-  .contain-content { overflow: hidden; }
+  .font-display  { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .font-body     { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .shadow-card   { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .shadow-pop    { box-shadow: 0 8px 40px rgba(0,0,0,0.16); }
+  .safe-area-pb  { padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px); }
+
+  /* Theme-aware utility classes */
+  .theme-bg      { background-color: var(--color-bg) !important; }
+  .theme-bg-deep { background-color: var(--color-bg-deep) !important; }
+  .theme-card    { background-color: var(--color-card) !important; }
+  .theme-accent  { background-color: var(--color-accent) !important; }
+  .theme-accent-light { background-color: var(--color-accent-light) !important; }
+  .theme-text    { color: var(--color-page-text) !important; }
+  .theme-sub     { color: var(--color-sub-text) !important; }
+  .theme-nav-bg  { background-color: var(--color-nav-bg) !important; }
+  .theme-sidebar { background-color: var(--color-sidebar) !important; }
+  .theme-border  { border-color: var(--color-border) !important; }
+
+  /* Dark theme text overrides */
+  .theme-dark .theme-card  { background-color: var(--color-card) !important; }
+  .theme-dark .text-gray-900 { color: var(--color-page-text) !important; }
+  .theme-dark .text-gray-700 { color: var(--color-page-text) !important; }
+  .theme-dark .text-gray-500 { color: var(--color-sub-text) !important; }
+  .theme-dark .text-gray-400 { color: var(--color-sub-text) !important; }
+  .theme-dark .bg-white      { background-color: var(--color-card) !important; }
+  .theme-dark .bg-green-50   { background-color: var(--color-bg-deep) !important; }
+  .theme-dark .border-gray-100 { border-color: var(--color-border) !important; }
 }
 
-/* Top navbar fixed on mobile */
-.mobile-navbar {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
+/* Perk: rainbow XP bar */
+.perk-rainbow-bar .xp-bar-fill {
+  background: linear-gradient(90deg, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ec4899) !important;
+  background-size: 200% 100% !important;
+  animation: rainbow-shift 3s linear infinite !important;
 }
+@keyframes rainbow-shift { 0%{background-position:0%} 100%{background-position:200%} }
 
-/* Page content must account for fixed navbar height (~57px) on mobile */
-.page-content {
-  padding-top: 57px;
-}
+/* Perk: custom avatar frame */
+.perk-avatar-frame { box-shadow: 0 0 0 3px var(--color-accent), 0 0 12px var(--color-accent) !important; }
 
-@media (min-width: 768px) {
-  .page-content { padding-top: 0; }
-  .mobile-navbar { position: static !important; }
-}
+/* Perk: dark cards */
+.perk-dark-cards .habit-card { background-color: #1f2937 !important; border-color: #374151 !important; }
+.perk-dark-cards .habit-card p { color: #f9fafb !important; }
 
 /* Confetti canvas */
-#confetti-canvas {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-}
+#confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }

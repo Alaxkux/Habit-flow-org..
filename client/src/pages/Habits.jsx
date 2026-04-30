@@ -55,7 +55,7 @@ const Habits = () => {
   const closeModal = () => { setModalOpen(false); setEditing(null) }
 
   return (
-    <div className="min-h-screen bg-green-50 pb-28 md:pb-8 md:ml-64 overflow-x-hidden">
+    <div className="min-h-screen bg-green-50 pb-28 md:pb-8 md:ml-72 overflow-x-hidden">
       <Navbar title="My Habits"/>
       <div className="h-14 md:hidden"/>
 

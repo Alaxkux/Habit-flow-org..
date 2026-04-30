@@ -2,12 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>HabitFlow — Build Habits That Stick</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>" />
+    <style>
+      /* Fix 6: Android Chrome ignores overflow-x:hidden on html/body.
+         position:fixed on a wrapper is the only reliable fix. */
+      html, body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
+      #root {
+        position: relative;
+        width: 100%;
+        overflow-x: hidden;
+        /* Prevent rubber-band horizontal scroll on iOS/Android */
+        overscroll-behavior-x: none;
+      }
+      /* Touch-action: pan-y prevents horizontal swipe triggering scroll */
+      * { touch-action: pan-y; box-sizing: border-box; }
+      /* Allow horizontal scroll only inside explicit containers */
+      .overflow-x-auto, [data-allow-scroll] { touch-action: pan-x pan-y; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
