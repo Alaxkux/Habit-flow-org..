@@ -9,7 +9,7 @@ import XPCard from '../components/ui/XPCard'
 import { getGreeting } from '../utils/helpers'
 import { launchConfetti } from '../utils/confetti'
 import { pushNotification } from '../utils/notifications'
-import { Flame, Target, CheckSquare, Plus, Zap } from 'lucide-react'
+import { Flame, CheckSquare, Target, Plus, Zap } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
@@ -26,17 +26,17 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
 )
 
 const Dashboard = () => {
-  const { user }    = useAuth()
+  const { user }   = useAuth()
   const { getXPMultiplier, getConfetiDuration, hasPerk } = usePowerUp()
-  const navigate    = useNavigate()
-  const location    = useLocation()
+  const navigate   = useNavigate()
+  const location   = useLocation()
 
   const [habits,       setHabits]       = useState([])
   const [completedIds, setCompletedIds] = useState([])
   const [todayNotes,   setTodayNotes]   = useState({})
   const [loading,      setLoading]      = useState(true)
-  const [streakMap,    setStreakMap]     = useState({})   // habitId -> currentStreak
-  const [bestStreak,   setBestStreak]   = useState(0)    // highest single-habit streak
+  const [streakMap,    setStreakMap]     = useState({})
+  const [bestStreak,   setBestStreak]   = useState(0)
   const [celebrated,   setCelebrated]   = useState(false)
   const [levelInfo,    setLevelInfo]    = useState(null)
   const [xpPop,        setXpPop]        = useState(null)
@@ -56,45 +56,36 @@ const Dashboard = () => {
       setLevelInfo(xpRes.data)
       setTodayNotes(todayRes.data.notes || {})
 
-      // Bug 1: only keep completedIds matching existing habits
       const validIds = fetchedCompleted.filter(id => fetchedHabits.some(h => h._id === id))
       setCompletedIds(validIds)
 
-      // Bug 2: reset celebrated if habits changed or day reset
       if (fetchedHabits.length === 0 || validIds.length < fetchedHabits.length) setCelebrated(false)
 
-      // Fetch streaks per habit
       const sMap = {}
       await Promise.all(fetchedHabits.map(async h => {
-        try {
-          const s = await api.get(`/logs/streak/${h._id}`)
-          sMap[h._id] = s.data.currentStreak
-        } catch {}
+        try { const s = await api.get(`/logs/streak/${h._id}`); sMap[h._id] = s.data.currentStreak } catch {}
       }))
       setStreakMap(sMap)
-
-      // Best streak = highest active streak across all habits (not sum!)
-      const best = Object.values(sMap).reduce((a, b) => Math.max(a, b), 0)
-      setBestStreak(best)
-
+      setBestStreak(Math.max(0, ...Object.values(sMap)))
     } catch { if (!silent) toast.error('Failed to load') }
     finally { if (!silent) setLoading(false) }
   }, [])
 
-  // Initial fetch
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Bug 4: re-fetch silently when returning to this page
+  // Re-fetch on visibility change (switching tabs/apps)
   useEffect(() => {
-    const handler = () => { if (document.visibilityState === 'visible') fetchData(true) }
-    document.addEventListener('visibilitychange', handler)
-    return () => document.removeEventListener('visibilitychange', handler)
+    const h = () => { if (document.visibilityState === 'visible') fetchData(true) }
+    document.addEventListener('visibilitychange', h)
+    return () => document.removeEventListener('visibilitychange', h)
   }, [fetchData])
 
-  // Also re-fetch when navigating back to dashboard from another route
-  useEffect(() => { fetchData(true) }, [location.pathname])
+  // Re-fetch silently on route change back to dashboard
+  const prevPath = useState(location.pathname)[0]
+  useEffect(() => {
+    if (prevPath !== location.pathname) fetchData(true)
+  }, [location.pathname])
 
-  // Sort habits: earliest reminder first, then no-time
   const sortedHabits = [...habits].sort((a, b) => {
     if (a.reminderTime && b.reminderTime) return a.reminderTime.localeCompare(b.reminderTime)
     if (a.reminderTime) return -1
@@ -105,7 +96,7 @@ const Dashboard = () => {
   const handleCheckIn = async (habitId, note = '') => {
     if (completedIds.includes(habitId)) return
     try {
-      const res = await api.post('/logs/checkin', { habitId, note })
+      const res          = await api.post('/logs/checkin', { habitId, note })
       const newCompleted = [...completedIds, habitId]
       setCompletedIds(newCompleted)
       if (note) setTodayNotes(prev => ({ ...prev, [habitId]: note }))
@@ -113,48 +104,43 @@ const Dashboard = () => {
       const habit     = habits.find(h => h._id === habitId)
       const habitName = habit?.name || 'Habit'
 
-      // Streak notification
+      // Streak — fetch updated streak after check-in
       try {
         const sRes          = await api.get(`/logs/streak/${habitId}`)
         const currentStreak = sRes.data.currentStreak
         const prevStreak    = streakMap[habitId] || 0
         const newMap        = { ...streakMap, [habitId]: currentStreak }
         setStreakMap(newMap)
-        setBestStreak(Object.values(newMap).reduce((a, b) => Math.max(a, b), 0))
+        setBestStreak(Math.max(0, ...Object.values(newMap)))
 
-        const notifSettings = (() => { try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || {} } catch { return {} } })()
+        const prefs = (() => { try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || {} } catch { return {} } })()
 
-        if (notifSettings.streaks !== false) {
+        // Streak notification: ONLY on day 1 (brand new streak start)
+        if (prefs.streaks !== false) {
           if (currentStreak === 1 && prevStreak === 0) {
-            pushNotification({ type:'streak', title:'🔥 Streak started!', body:`"${habitName}" — day 1, let's go!` })
-          } else if (currentStreak > 1 && currentStreak > prevStreak) {
-            pushNotification({ type:'streak', title:`🔥 ${currentStreak}-day streak!`, body:`"${habitName}" keeps going!` })
-          } else if (prevStreak > 1 && currentStreak === 1) {
-            pushNotification({ type:'streak', title:'⚡ Streak restored!', body:`"${habitName}" is back on track!` })
+            // First ever day — streak just started
+            pushNotification({ type:'streak', title:'🔥 Streak started!', body:`"${habitName}" — day 1. Keep it up!` })
           }
+          // All other streak milestones: silent — user sees the stat card update
+          // This prevents notification spam on every single check-in
         }
       } catch {}
 
-      // XP update with powerup multiplier
+      // XP with powerup multiplier
       if (res.data?.levelInfo) {
-        const prev     = levelInfo
-        const next     = res.data.levelInfo
-        const mult     = getXPMultiplier()
-        const base     = res.data.xpEarned || 10
-        const actual   = Math.round(base * mult)
-
-        // If multiplier active, award bonus XP on top
-        if (mult > 1 && actual > base) {
-          try { await api.post('/logs/spend-xp', { amount: -(actual - base) }) } catch {}
-        }
+        const prev    = levelInfo
+        const next    = res.data.levelInfo
+        const mult    = getXPMultiplier()
+        const base    = res.data.xpEarned || 10
+        const display = mult > 1 ? Math.round(base * mult) : base
 
         setLevelInfo(next)
-        setXpPop(`+${actual} XP${mult > 1 ? ` ×${mult}` : ''}`)
+        setXpPop(`+${display} XP${mult > 1 ? ` ×${mult}` : ''}`)
         setTimeout(() => setXpPop(null), 2000)
 
         if (prev && next.level > prev.level) {
-          const notifSettings = (() => { try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || {} } catch { return {} } })()
-          if (notifSettings.badges !== false) {
+          const prefs = (() => { try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || {} } catch { return {} } })()
+          if (prefs.badges !== false) {
             pushNotification({ type:'xp', title:`⚡ Level Up! Lv.${next.level}`, body:`You're now "${next.title}"!` })
           }
           setTimeout(() => {
@@ -168,9 +154,9 @@ const Dashboard = () => {
       // Perfect day
       if (newCompleted.length === habits.length && habits.length > 0 && !celebrated) {
         setCelebrated(true)
-        const notifSettings = (() => { try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || {} } catch { return {} } })()
-        if (notifSettings.badges !== false) {
-          pushNotification({ type:'badge', title:'⭐ Perfect Day!', body:'Every habit done. Exceptional!' })
+        const prefs = (() => { try { return JSON.parse(localStorage.getItem('hf_notif_settings')) || {} } catch { return {} } })()
+        if (prefs.badges !== false) {
+          pushNotification({ type:'badge', title:'⭐ Perfect Day!', body:'Every habit done today. Exceptional!' })
         }
         setTimeout(() => {
           launchConfetti({ duration: getConfetiDuration() })
@@ -184,18 +170,14 @@ const Dashboard = () => {
     }
   }
 
-  // Bug 1: guard division by zero
   const completionRate = habits.length > 0 ? Math.round((completedIds.length / habits.length) * 100) : 0
   const circumference  = 2 * Math.PI * 36
-
-  const streakFirePerk = hasPerk('streak_fire')
-  const streakDisplay  = streakFirePerk ? '🔥'.repeat(Math.min(bestStreak, 5)) || '0' : `${bestStreak}d`
+  const streakDisplay  = hasPerk('streak_fire') ? ('🔥'.repeat(Math.min(bestStreak, 5)) || '0') : `${bestStreak}d`
 
   return (
     <div className="min-h-screen theme-bg pb-28 md:pb-8 md:ml-72 overflow-x-hidden">
       <Navbar title="Dashboard"/>
       <div className="h-14 md:hidden"/>
-
       <div className="px-4 py-4 md:px-8 md:py-8 max-w-2xl mx-auto w-full">
 
         <div className="mb-5">
@@ -208,7 +190,8 @@ const Dashboard = () => {
           <XPCard levelInfo={levelInfo}/>
           {xpPop && (
             <div className="absolute top-2 right-3 pointer-events-none animate-bounce">
-              <span className="bg-amber-400 text-white text-xs font-display font-900 px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
+              <span className="text-white text-xs font-display font-900 px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1"
+                style={{ backgroundColor:'var(--color-accent)' }}>
                 <Zap size={11}/>{xpPop}
               </span>
             </div>
@@ -231,9 +214,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="min-w-0">
-            <p className="font-display font-800 theme-text">
-              {completedIds.length} of {habits.length} done
-            </p>
+            <p className="font-display font-800 theme-text">{completedIds.length} of {habits.length} done</p>
             <p className="text-sm theme-sub mt-1">
               {habits.length === 0 ? '🌱 Create your first habit!'
                 : completionRate === 100 ? '🎉 Perfect day!'
@@ -243,11 +224,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats — Streak = best active, Done = today, Habits = total */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-2 mb-5">
-          <StatCard icon={Flame}       label="Best Streak" value={streakDisplay}        color="#FF6F00"/>
-          <StatCard icon={CheckSquare} label="Done Today"  value={completedIds.length}  color="#16A34A"/>
-          <StatCard icon={Target}      label="My Habits"   value={habits.length}        color="#42A5F5"/>
+          <StatCard icon={Flame}       label="Best Streak" value={streakDisplay}       color="#FF6F00"/>
+          <StatCard icon={CheckSquare} label="Done Today"  value={completedIds.length} color="var(--color-accent)"/>
+          <StatCard icon={Target}      label="My Habits"   value={habits.length}       color="#42A5F5"/>
         </div>
 
         {/* Today's habits */}
@@ -277,7 +258,7 @@ const Dashboard = () => {
             </button>
           </div>
         ) : (
-          <div className={`space-y-3 ${hasPerk('dark_cards') ? 'perk-dark-cards' : ''}`}>
+          <div className="space-y-3">
             {sortedHabits.map(habit => (
               <HabitCard key={habit._id} habit={habit}
                 completed={completedIds.includes(habit._id)}

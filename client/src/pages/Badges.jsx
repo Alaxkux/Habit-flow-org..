@@ -34,15 +34,15 @@ const Badges = () => {
   const pct = data.total ? Math.round((data.earnedCount / data.total) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-green-50 pb-28 md:pb-8 md:ml-72 overflow-x-hidden">
+    <div className="min-h-screen theme-bg pb-28 md:pb-8 md:ml-72 overflow-x-hidden">
       <Navbar title="Badges"/>
       <div className="h-14 md:hidden"/>
 
       <div className="px-4 py-4 md:px-8 md:py-8 max-w-2xl mx-auto w-full">
-        <h1 className="font-display font-900 text-2xl text-gray-900 mb-1 hidden md:block">Badges</h1>
+        <h1 className="font-display font-900 text-2xl theme-text mb-1 hidden md:block">Badges</h1>
 
         {/* Progress card */}
-        <div className="bg-white rounded-2xl p-4 shadow-card mb-4">
+        <div className="theme-card rounded-2xl p-4 shadow-card mb-4">
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 flex-shrink-0">
               <svg className="w-16 h-16 -rotate-90" viewBox="0 0 56 56">
@@ -54,12 +54,12 @@ const Badges = () => {
                   style={{ transition: 'stroke-dashoffset 0.8s ease' }}/>
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="font-display font-900 text-sm text-gray-900">{pct}%</span>
+                <span className="font-display font-900 text-sm theme-text">{pct}%</span>
               </div>
             </div>
             <div className="flex-1">
-              <p className="font-display font-800 text-gray-900">{data.earnedCount} of {data.total} badges earned</p>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="font-display font-800 theme-text">{data.earnedCount} of {data.total} badges earned</p>
+              <p className="text-xs theme-sub mt-0.5">
                 {pct === 100 ? '🏆 Complete collection!' : pct >= 50 ? '🔥 Great progress!' : '🌱 Keep going!'}
               </p>
               <div className="h-2 bg-gray-100 rounded-full mt-2 overflow-hidden">
@@ -75,7 +75,7 @@ const Badges = () => {
           {[['all', 'All'], ['earned', '🏆 Earned'], ['locked', '🔒 Locked']].map(([val, label]) => (
             <button key={val} onClick={() => setFilter(val)}
               className={`px-4 py-2 rounded-2xl text-xs font-display font-800 transition-all
-                ${filter === val ? 'bg-green-500 text-white shadow-sm' : 'bg-white text-gray-500 hover:bg-green-50'}`}>
+                ${filter === val ? 'theme-bg0 text-white shadow-sm' : 'theme-card theme-sub hover:theme-bg'}`}>
               {label}
             </button>
           ))}
@@ -89,15 +89,15 @@ const Badges = () => {
           <div className="space-y-5">
             {Object.entries(grouped).map(([cat, badges]) => (
               <div key={cat}>
-                <h2 className="font-display font-800 text-xs text-gray-400 uppercase tracking-wider mb-2 px-1">{cat}</h2>
+                <h2 className="font-display font-800 text-xs theme-sub uppercase tracking-wider mb-2 px-1">{cat}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {badges.map(b => (
                     <button key={b.type} onClick={() => setSelected(b)}
-                      className={`bg-white rounded-2xl p-4 text-center border-2 transition-all active:scale-95 text-left
+                      className={`theme-card rounded-2xl p-4 text-center border-2 transition-all active:scale-95 text-left
                         ${b.earned ? 'border-green-100 shadow-card' : 'border-transparent shadow-sm opacity-60'}
                         hover:border-green-200`}>
                       <div className={`text-3xl mb-2 ${b.earned ? '' : 'grayscale'}`}>{b.emoji}</div>
-                      <p className={`font-display font-800 text-xs leading-tight ${b.earned ? 'text-gray-900' : 'text-gray-500'}`}>{b.label}</p>
+                      <p className={`font-display font-800 text-xs leading-tight ${b.earned ? 'theme-text' : 'theme-sub'}`}>{b.label}</p>
                       {b.earned && b.earnedAt && (
                         <p className="text-[10px] text-green-600 font-700 mt-1">
                           {new Date(b.earnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -114,7 +114,7 @@ const Badges = () => {
               <div className="text-center py-12">
                 <div className="text-5xl mb-3">🎖️</div>
                 <p className="font-display font-800 text-gray-700">No badges here</p>
-                <p className="text-sm text-gray-400 mt-1">Start checking in to earn your first badge!</p>
+                <p className="text-sm theme-sub mt-1">Start checking in to earn your first badge!</p>
               </div>
             )}
           </div>
@@ -125,12 +125,12 @@ const Badges = () => {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0"
           onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="theme-card rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className={`text-6xl text-center mb-4 ${selected.earned ? '' : 'grayscale'}`}>{selected.emoji}</div>
-            <h3 className="font-display font-900 text-xl text-gray-900 text-center">{selected.label}</h3>
-            <p className="text-sm text-gray-500 text-center mt-2">{selected.desc}</p>
+            <h3 className="font-display font-900 text-xl theme-text text-center">{selected.label}</h3>
+            <p className="text-sm theme-sub text-center mt-2">{selected.desc}</p>
             {selected.earned && selected.earnedAt && (
-              <div className="mt-3 bg-green-50 rounded-2xl py-2 px-4 text-center">
+              <div className="mt-3 theme-bg rounded-2xl py-2 px-4 text-center">
                 <p className="text-xs text-green-700 font-display font-700">
                   Earned on {new Date(selected.earnedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
@@ -138,11 +138,11 @@ const Badges = () => {
             )}
             {!selected.earned && (
               <div className="mt-3 bg-gray-50 rounded-2xl py-2 px-4 text-center">
-                <p className="text-xs text-gray-400 font-display font-700">Not yet earned — keep going! 💪</p>
+                <p className="text-xs theme-sub font-display font-700">Not yet earned — keep going! 💪</p>
               </div>
             )}
             <button onClick={() => setSelected(null)}
-              className="w-full mt-5 py-3 rounded-2xl bg-green-500 text-white font-display font-800 text-sm hover:bg-green-600 transition-all">
+              className="w-full mt-5 py-3 rounded-2xl theme-bg0 text-white font-display font-800 text-sm hover:bg-green-600 transition-all">
               Got it
             </button>
           </div>

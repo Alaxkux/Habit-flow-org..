@@ -2,57 +2,55 @@ const HabitLog = require('../models/HabitLog');
 const Badge    = require('../models/Badge');
 const User     = require('../models/User');
 
-const XP = { checkin: 10, perfect_day: 25 };
+const XP = { checkin: 10 };
 
 async function awardXP(userId, amount) {
   const user = await User.findByIdAndUpdate(userId, { $inc: { xp: amount } }, { new: true });
   return user ? user.getLevelInfo() : null;
 }
 
-// Calculate streak for a habit cleanly — consecutive days ending today or yesterday
+// Date string helper — avoids all timezone/ms drift
+function toDateStr(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00'); // noon avoids DST edge
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
+}
+
 function calcStreak(logs) {
   if (!logs.length) return { currentStreak: 0, longestStreak: 0 };
 
-  // Get unique calendar days (YYYY-MM-DD), most recent first
-  const days = [...new Set(
-    logs.map(l => {
-      const d = new Date(l.completedAt);
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    })
-  )].sort().reverse();
+  // Unique calendar days, most recent first — pure strings
+  const days = [...new Set(logs.map(l => toDateStr(l.completedAt)))].sort().reverse();
 
-  const todayStr = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  })();
-  const yesterdayStr = (() => {
-    const d = new Date(); d.setDate(d.getDate() - 1);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  })();
+  const todayStr     = toDateStr(new Date());
+  const yesterdayStr = addDays(todayStr, -1);
 
-  // Streak must include today OR yesterday (otherwise it's broken)
+  // Streak is alive only if most recent check-in is today or yesterday
   if (days[0] !== todayStr && days[0] !== yesterdayStr) {
     return { currentStreak: 0, longestStreak: calcLongest(days) };
   }
 
+  // Count consecutive days going backwards using string comparison
   let current = 1;
   for (let i = 1; i < days.length; i++) {
-    const prev = new Date(days[i - 1]);
-    const curr = new Date(days[i]);
-    const diff = Math.round((prev - curr) / 86400000);
-    if (diff === 1) { current++; } else break;
+    const expected = addDays(days[i - 1], -1); // one day before previous
+    if (days[i] === expected) { current++; } else break;
   }
 
   return { currentStreak: current, longestStreak: Math.max(current, calcLongest(days)) };
 }
 
 function calcLongest(sortedDaysDesc) {
+  if (!sortedDaysDesc.length) return 0;
   let best = 1, cur = 1;
   for (let i = 1; i < sortedDaysDesc.length; i++) {
-    const prev = new Date(sortedDaysDesc[i - 1]);
-    const curr = new Date(sortedDaysDesc[i]);
-    const diff = Math.round((prev - curr) / 86400000);
-    if (diff === 1) { cur++; best = Math.max(best, cur); } else cur = 1;
+    const expected = addDays(sortedDaysDesc[i - 1], -1);
+    if (sortedDaysDesc[i] === expected) { cur++; best = Math.max(best, cur); } else cur = 1;
   }
   return best;
 }
@@ -68,7 +66,7 @@ exports.checkIn = async (req, res) => {
 
     const log = await HabitLog.create({ habitId, userId: req.user.id, note: note || '' });
 
-    let xpEarned = XP.checkin;
+    const xpEarned = XP.checkin;
 
     // Time-based badges
     const hour = new Date().getHours();
@@ -77,7 +75,7 @@ exports.checkIn = async (req, res) => {
 
     // Check-in count badges
     const totalLogs = await HabitLog.countDocuments({ userId: req.user.id });
-    if (totalLogs === 1)   await Badge.findOneAndUpdate({ userId:req.user.id, badgeType:'first_checkin' }, { userId:req.user.id, badgeType:'first_checkin' }, { upsert:true }).catch(()=>{});
+    if (totalLogs === 1) await Badge.findOneAndUpdate({ userId:req.user.id, badgeType:'first_checkin' }, { userId:req.user.id, badgeType:'first_checkin' }, { upsert:true }).catch(()=>{});
     for (const [n,t] of [[10,'checkin_10'],[50,'checkin_50'],[100,'checkin_100'],[500,'checkin_500']]) {
       if (totalLogs === n) await Badge.findOneAndUpdate({ userId:req.user.id, badgeType:t }, { userId:req.user.id, badgeType:t }, { upsert:true }).catch(()=>{});
     }
@@ -104,7 +102,6 @@ exports.getStreak = async (req, res) => {
     const logs = await HabitLog.find({ habitId, userId: req.user.id }).sort({ completedAt: -1 });
     const { currentStreak, longestStreak } = calcStreak(logs);
 
-    // Award streak badges
     for (const [s,t] of [[3,'streak_3'],[7,'streak_7'],[14,'streak_14'],[30,'streak_30'],[60,'streak_60'],[100,'streak_100'],[365,'streak_365']]) {
       if (currentStreak >= s) await Badge.findOneAndUpdate({ userId:req.user.id, badgeType:t }, { userId:req.user.id, badgeType:t }, { upsert:true }).catch(()=>{});
     }
@@ -125,10 +122,10 @@ exports.getTodayStatus = async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }); }
 };
 
-// Best single-habit streak across all user habits (for dashboard display)
 exports.getBestStreak = async (req, res) => {
   try {
-    const habits = await require('../models/Habit').find({ userId: req.user.id, isActive: true });
+    const Habit  = require('../models/Habit');
+    const habits = await Habit.find({ userId: req.user.id, isActive: true });
     let best = 0;
     for (const h of habits) {
       const logs = await HabitLog.find({ habitId: h._id, userId: req.user.id }).sort({ completedAt: -1 });
@@ -144,11 +141,7 @@ exports.getHeatmap = async (req, res) => {
     const since = new Date(); since.setDate(since.getDate() - 364); since.setHours(0,0,0,0);
     const logs  = await HabitLog.find({ userId: req.user.id, completedAt: { $gte: since } });
     const map   = {};
-    logs.forEach(l => {
-      const d   = new Date(l.completedAt);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      map[key]  = (map[key] || 0) + 1;
-    });
+    logs.forEach(l => { map[toDateStr(l.completedAt)] = (map[toDateStr(l.completedAt)] || 0) + 1; });
     res.json(map);
   } catch { res.status(500).json({ message: 'Server error' }); }
 };
